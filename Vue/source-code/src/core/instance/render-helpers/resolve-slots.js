@@ -21,6 +21,7 @@ export function resolveSlots (
     const data = child.data
     // remove slot attribute if the node is resolved as a Vue slot node
     // 如果节点作为Vue的slot被解析的话, 就移除其slot属性
+    // 后文通过data.slot去拿slot name
     if (data && data.attrs && data.attrs.slot) {
       delete data.attrs.slot
     }
@@ -32,16 +33,19 @@ export function resolveSlots (
     ) {
       const name = data.slot
       const slot = (slots[name] || (slots[name] = []))
+      // 当为template时, 将此template的children全部push进我们的slot中
       if (child.tag === 'template') {
         slot.push.apply(slot, child.children || [])
       } else {
         slot.push(child)
       }
     } else {
+      // 当slot名不存在, 或者context不同时候, push进default slots中(WHY 什么时候context会不同)
       (slots.default || (slots.default = [])).push(child)
     }
   }
   // ignore slots that contains only whitespace
+  // 忽略仅仅包含空格的slots
   for (const name in slots) {
     if (slots[name].every(isWhitespace)) {
       delete slots[name]
@@ -52,6 +56,11 @@ export function resolveSlots (
 
 // 判断是否是空格
 function isWhitespace (node: VNode): boolean {
+  /**zh-cn
+   * 俩种情况：
+   * 1. 注释节点, 且其不是异步工厂占位符
+   * 2. 其text为空格' '
+   */
   return (node.isComment && !node.asyncFactory) || node.text === ' '
 }
 
