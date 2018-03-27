@@ -221,7 +221,7 @@ export function mountComponent (
 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
-  // 
+  // 手动挂载实例, 并调用mount钩子
   if (vm.$vnode == null) {
     vm._isMounted = true
     callHook(vm, 'mounted')
@@ -242,6 +242,8 @@ export function updateChildComponent (
 
   // determine whether component has slot children
   // we need to do this before overwriting $options._renderChildren
+  // 组件是否具有slot children
+  // 在重写$options._renderChildren之前调用
   const hasChildren = !!(
     renderChildren ||               // has new static slots
     vm.$options._renderChildren ||  // has old static slots
@@ -260,10 +262,13 @@ export function updateChildComponent (
   // update $attrs and $listeners hash
   // these are also reactive so they may trigger child update if the child
   // used them during render
+  // 更新$attra和$listeners哈希
+  // 这些同样也是响应式的,  所以如果子组件在render中使用他们, 他们能触发子组件更新
   vm.$attrs = parentVnode.data.attrs || emptyObject
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 更新props
   if (propsData && vm.$options.props) {
     observerState.shouldConvert = false
     const props = vm._props
@@ -274,16 +279,19 @@ export function updateChildComponent (
     }
     observerState.shouldConvert = true
     // keep a copy of raw propsData
+    // 保持纯propsData的引用
     vm.$options.propsData = propsData
   }
 
   // update listeners
+  // 更新监听器
   listeners = listeners || emptyObject
   const oldListeners = vm.$options._parentListeners
   vm.$options._parentListeners = listeners
   updateComponentListeners(vm, listeners, oldListeners)
 
   // resolve slots + force update if has children
+  // 如果有子组件或slot, 则强制其更新, 触发视图的改变, 并解析器slots
   if (hasChildren) {
     vm.$slots = resolveSlots(renderChildren, parentVnode.context)
     vm.$forceUpdate()

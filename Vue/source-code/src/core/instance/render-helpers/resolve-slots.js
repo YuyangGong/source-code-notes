@@ -5,6 +5,9 @@ import type VNode from 'core/vdom/vnode'
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
  */
+/**zh-cn
+ * 运行时的辅助函数, 将raw children VNodes解析成slot对象
+ */
 export function resolveSlots (
   children: ?Array<VNode>,
   context: ?Component
@@ -17,11 +20,13 @@ export function resolveSlots (
     const child = children[i]
     const data = child.data
     // remove slot attribute if the node is resolved as a Vue slot node
+    // 如果节点作为Vue的slot被解析的话, 就移除其slot属性
     if (data && data.attrs && data.attrs.slot) {
       delete data.attrs.slot
     }
     // named slots should only be respected if the vnode was rendered in the
     // same context.
+    // 只有在相同的context中, 具名slots才应该被使用
     if ((child.context === context || child.fnContext === context) &&
       data && data.slot != null
     ) {
@@ -45,6 +50,7 @@ export function resolveSlots (
   return slots
 }
 
+// 判断是否是空格
 function isWhitespace (node: VNode): boolean {
   return (node.isComment && !node.asyncFactory) || node.text === ' '
 }
@@ -58,6 +64,7 @@ export function resolveScopedSlots (
     if (Array.isArray(fns[i])) {
       resolveScopedSlots(fns[i], res)
     } else {
+      // scoped slot就是将其相对应
       res[fns[i].key] = fns[i].fn
     }
   }
