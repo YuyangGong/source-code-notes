@@ -12,6 +12,9 @@ import {
 /**
  * Runtime helper for merging v-bind="object" into a VNode's data.
  */
+/**zh-cn
+ * 运行时的辅助函数, 用于归并v-bind="object"到VNode的data中去
+ */
 export function bindObjectProps (
   data: any,
   tag: string,
@@ -21,11 +24,14 @@ export function bindObjectProps (
 ): VNodeData {
   if (value) {
     if (!isObject(value)) {
+      // 我们期望的传入是对象或数组
       process.env.NODE_ENV !== 'production' && warn(
         'v-bind without argument expects an Object or Array value',
         this
       )
     } else {
+      // 如果是数组, 则转换为对象
+      // WHY 这里处理不了 ['class1', 'class2'] 这种情况呀
       if (Array.isArray(value)) {
         value = toObject(value)
       }
