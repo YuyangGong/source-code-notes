@@ -13,7 +13,8 @@ import {
  * Runtime helper for merging v-bind="object" into a VNode's data.
  */
 /**zh-cn
- * 运行时的辅助函数, 用于归并v-bind="object"到VNode的data中去
+ * 运行时的辅助函数, 用于归并v-bind="object"(此时的v-bind没有如v-bind:props这种参数, 只是一种裸露的bind)
+ * 到VNode的data中去
  */
 export function bindObjectProps (
   data: any,
@@ -30,8 +31,7 @@ export function bindObjectProps (
         this
       )
     } else {
-      // 如果是数组, 则转换为对象
-      // WHY 这里处理不了 ['class1', 'class2'] 这种情况呀
+      // 如果是对象数组, 则归并为一个对象
       if (Array.isArray(value)) {
         value = toObject(value)
       }
@@ -40,7 +40,7 @@ export function bindObjectProps (
         if (
           key === 'class' ||
           key === 'style' ||
-          isReservedAttribute(key)
+          isReservedAttribute(key) // 包括key,ref,slot,slot-scope,is
         ) {
           hash = data
         } else {
@@ -52,6 +52,8 @@ export function bindObjectProps (
         if (!(key in hash)) {
           hash[key] = value[key]
 
+          // 如果设置了同步, 则绑定其data.on上面相关的函数`update:${key}`这种格式
+          // 具体见[sync](https://cn.vuejs.org/v2/guide/components.html#sync-修饰符)
           if (isSync) {
             const on = data.on || (data.on = {})
             on[`update:${key}`] = function ($event) {
