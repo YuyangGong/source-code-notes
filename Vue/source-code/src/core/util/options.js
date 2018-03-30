@@ -510,6 +510,7 @@ export function resolveAsset (
   // 将id转换成帕斯卡命名法后再检查一次
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
   // fallback to prototype chain
+  // 回退到使用原型链上的assert
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId]
   if (process.env.NODE_ENV !== 'production' && warnMissing && !res) {
     warn(
