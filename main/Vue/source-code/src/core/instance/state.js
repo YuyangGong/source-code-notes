@@ -27,7 +27,8 @@ import {
   isServerRendering,
   isReservedAttribute
 } from '../util/index'
-
+// 共享属性定义, 内部的state多个地方是按照这个定义的,
+// 即其可枚举可配置
 const sharedPropertyDefinition = {
   enumerable: true,
   configurable: true,
@@ -35,6 +36,7 @@ const sharedPropertyDefinition = {
   set: noop
 }
 
+// 将sourceKey上的key属性直接代理到proxy上, 可以通过读写key来获取和修改sourceKey上的key
 export function proxy (target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter () {
     return this[sourceKey][key]
@@ -45,14 +47,19 @@ export function proxy (target: Object, sourceKey: string, key: string) {
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
+// 初始化state
 export function initState (vm: Component) {
+  // 初始化watchers
   vm._watchers = []
   const opts = vm.$options
+  // 依次初始化props, methods, data, computed, watch
+  // props是最早init的, 所以后续的data可以拿到其值
   if (opts.props) initProps(vm, opts.props)
   if (opts.methods) initMethods(vm, opts.methods)
   if (opts.data) {
     initData(vm)
   } else {
+    // 如果data不存在, 则观察一个空对象
     observe(vm._data = {}, true /* asRootData */)
   }
   if (opts.computed) initComputed(vm, opts.computed)
@@ -62,13 +69,18 @@ export function initState (vm: Component) {
 }
 
 function initProps (vm: Component, propsOptions: Object) {
+  // 获取propsData
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
   // cache prop keys so that future props updates can iterate using Array
   // instead of dynamic object key enumeration.
+  // 缓存prop的key, 后续props更新时, 我们只需要迭代这个数组,
+  // 不需要去迭代一个动态对象的key
   const keys = vm.$options._propKeys = []
+  // 当$parent不存在时候, 则可以认定其为根节点
   const isRoot = !vm.$parent
   // root instance props should be converted
+  // 根实例的props应该被转换
   observerState.shouldConvert = isRoot
   for (const key in propsOptions) {
     keys.push(key)
@@ -76,6 +88,7 @@ function initProps (vm: Component, propsOptions: Object) {
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
       const hyphenatedKey = hyphenate(key)
+      // 检查Key是否是已存在的属性
       if (isReservedAttribute(hyphenatedKey) ||
           config.isReservedAttr(hyphenatedKey)) {
         warn(
@@ -83,6 +96,7 @@ function initProps (vm: Component, propsOptions: Object) {
           vm
         )
       }
+      // 定义其响应式
       defineReactive(props, key, value, () => {
         if (vm.$parent && !isUpdatingChildComponent) {
           warn(
@@ -100,18 +114,22 @@ function initProps (vm: Component, propsOptions: Object) {
     // static props are already proxied on the component's prototype
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.
+    // 静态的props已经通过Vue.extend代理在了组件的prototype上。
+    // 我们在实例中只需要代理props
     if (!(key in vm)) {
       proxy(vm, `_props`, key)
     }
   }
   observerState.shouldConvert = true
 }
-
+// 初始化Data
 function initData (vm: Component) {
   let data = vm.$options.data
+  // data可能是函数或者对象
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
+  // 只能返回纯对象
   if (!isPlainObject(data)) {
     data = {}
     process.env.NODE_ENV !== 'production' && warn(
@@ -121,6 +139,7 @@ function initData (vm: Component) {
     )
   }
   // proxy data on instance
+  // 在实例上代理data
   const keys = Object.keys(data)
   const props = vm.$options.props
   const methods = vm.$options.methods
@@ -151,9 +170,11 @@ function initData (vm: Component) {
 
 export function getData (data: Function, vm: Component): any {
   try {
+    // 这里有点和之前的预期不太一样的地方, vm会被作为参数传给data函数
     return data.call(vm, vm)
   } catch (e) {
     handleError(e, vm, `data()`)
+    // 如果出错了返回空对象, 作为data
     return {}
   }
 }
