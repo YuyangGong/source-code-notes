@@ -181,14 +181,17 @@ export function getData (data: Function, vm: Component): any {
 
 const computedWatcherOptions = { lazy: true }
 
+// 初始化计算属性
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null)
   // computed properties are just getters during SSR
+  // 在服务器端渲染时, 计算属性仅仅只有getters, 没有setters
   const isSSR = isServerRendering()
 
   for (const key in computed) {
     const userDef = computed[key]
+    // 获取计算属性的getter, 其可能是直接的函数, 也可能是相关对象的getter
     const getter = typeof userDef === 'function' ? userDef : userDef.get
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
@@ -199,6 +202,8 @@ function initComputed (vm: Component, computed: Object) {
 
     if (!isSSR) {
       // create internal watcher for the computed property.
+      // 为计算属性创建内部的watcher
+      // 只有非服务器端渲染的时候会开启, 服务器端渲染的情况下不开启
       watchers[key] = new Watcher(
         vm,
         getter || noop,
@@ -210,6 +215,10 @@ function initComputed (vm: Component, computed: Object) {
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
+    // 组件需要用到的属性(如data, props), 
+    // 都通过代理的方式挂载在了组件原型上,
+    // 在初始化计算属性时候, 直接通过`for in`判断
+    // key是否处在于vm及其原型链上即可
     if (!(key in vm)) {
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
@@ -222,16 +231,19 @@ function initComputed (vm: Component, computed: Object) {
   }
 }
 
+// 定义计算属性
 export function defineComputed (
   target: any,
   key: string,
   userDef: Object | Function
 ) {
+  // ssr时, 不缓存
   const shouldCache = !isServerRendering()
   if (typeof userDef === 'function') {
     sharedPropertyDefinition.get = shouldCache
       ? createComputedGetter(key)
       : userDef
+    // 计算属性不能修改, 设置计算属性的setter为空函数(即无副作用无返回)
     sharedPropertyDefinition.set = noop
   } else {
     sharedPropertyDefinition.get = userDef.get
@@ -258,10 +270,16 @@ export function defineComputed (
 function createComputedGetter (key) {
   return function computedGetter () {
     const watcher = this._computedWatchers && this._computedWatchers[key]
+    // WHY: 什么情况下watcher会不存在呢?
     if (watcher) {
+      // 若dirty, 则直接执行计算
+      // 这里只有dirty为true, 即其依赖项有改动时候才会重新计算
+      // 若依赖项没有改动, 则使用上次的值(即watcher.value)
+      // TODO: 完全搞清楚dirty的作用
       if (watcher.dirty) {
         watcher.evaluate()
       }
+      // 依赖有改动时, depent事件
       if (Dep.target) {
         watcher.depend()
       }
