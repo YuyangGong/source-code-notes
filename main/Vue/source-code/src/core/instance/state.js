@@ -243,9 +243,11 @@ export function defineComputed (
     sharedPropertyDefinition.get = shouldCache
       ? createComputedGetter(key)
       : userDef
-    // 计算属性不能修改, 设置计算属性的setter为空函数(即无副作用无返回)
     sharedPropertyDefinition.set = noop
   } else {
+    // 这里判断了一个userDef.cache 根据官网只是做个向后兼容
+    // 详见[cache: false](https://cn.vuejs.org/v2/guide/migration.html#cache-false-弃用)
+    // WHY 感觉既然已经在V2.0中弃用了, 就应该删除这些"冗余"的逻辑呀
     sharedPropertyDefinition.get = userDef.get
       ? shouldCache && userDef.cache !== false
         ? createComputedGetter(key)
@@ -257,6 +259,8 @@ export function defineComputed (
   }
   if (process.env.NODE_ENV !== 'production' &&
       sharedPropertyDefinition.set === noop) {
+    // 当set不存在时候, 赋值set, 并在其中加入warn错误信息,
+    // 方便通知使用者, 有利于调试
     sharedPropertyDefinition.set = function () {
       warn(
         `Computed property "${key}" was assigned to but it has no setter.`,
@@ -287,11 +291,12 @@ function createComputedGetter (key) {
     }
   }
 }
-
+// 初始化方法
 function initMethods (vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
     if (process.env.NODE_ENV !== 'production') {
+      // 检查相关method是否有值
       if (methods[key] == null) {
         warn(
           `Method "${key}" has an undefined value in the component definition. ` +
@@ -299,12 +304,14 @@ function initMethods (vm: Component, methods: Object) {
           vm
         )
       }
+      // 检查是否有同名prop
       if (props && hasOwn(props, key)) {
         warn(
           `Method "${key}" has already been defined as a prop.`,
           vm
         )
       }
+      // 检查是否是Vue保留名(以_或$开头)
       if ((key in vm) && isReserved(key)) {
         warn(
           `Method "${key}" conflicts with an existing Vue instance method. ` +
@@ -312,13 +319,19 @@ function initMethods (vm: Component, methods: Object) {
         )
       }
     }
+    // 将method代理到vm上
     vm[key] = methods[key] == null ? noop : bind(methods[key], vm)
   }
 }
-
+// 初始化watch
 function initWatch (vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
+    // watch的handler可以是:
+    // 1. 字符串 
+    // 2. 对象 
+    // 3. 函数 
+    // 4. 数组(由以上3种, 即字符串, 对象, 函数组成的数组)
     if (Array.isArray(handler)) {
       for (let i = 0; i < handler.length; i++) {
         createWatcher(vm, key, handler[i])
@@ -329,31 +342,43 @@ function initWatch (vm: Component, watch: Object) {
   }
 }
 
+// 这一步主要用于统一参数为keyOrFn, handler(function), options的格式, 传给$watch
 function createWatcher (
   vm: Component,
   keyOrFn: string | Function,
   handler: any,
   options?: Object
 ) {
+  // handler为对象时候, 设置options和handler
   if (isPlainObject(handler)) {
     options = handler
     handler = handler.handler
   }
+  // handler为字符串时, 直接使用vm实例上的方法(方法名与handler字符串内容相同)
   if (typeof handler === 'string') {
     handler = vm[handler]
   }
+  // 设置watch
   return vm.$watch(keyOrFn, handler, options)
 }
 
+// 状态混入
 export function stateMixin (Vue: Class<Component>) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up
   // the object here.
+  // 当我们使用Object.defineProperty时, 直接声明定义对象可能会导致flow的一些问题
+  // 为了避免上述问题, 这里我们预先创建对象
   const dataDef = {}
   dataDef.get = function () { return this._data }
   const propsDef = {}
   propsDef.get = function () { return this._props }
   if (process.env.NODE_ENV !== 'production') {
+    // 这里拦截了对根data的直接修改, 但是并没有拦截对根data的
+    // 相关属性的更改, 比如现在有`data: { test: {} }`,
+    // 如果我们直接`data.test = xxx`是会警告的,
+    // 但是如果`data.test.attribute = xxx`则不会
+    // WHY: 话说这个newData貌似没有用到呀
     dataDef.set = function (newData: Object) {
       warn(
         'Avoid replacing instance root $data. ' +
@@ -361,10 +386,12 @@ export function stateMixin (Vue: Class<Component>) {
         this
       )
     }
+    // 同样只拦截了对props的修改, 但是没有拦截对props的属性的修改
     propsDef.set = function () {
       warn(`$props is readonly.`, this)
     }
   }
+  // 将_data, _props代理到vm的$data, $props上
   Object.defineProperty(Vue.prototype, '$data', dataDef)
   Object.defineProperty(Vue.prototype, '$props', propsDef)
 
@@ -377,12 +404,15 @@ export function stateMixin (Vue: Class<Component>) {
     options?: Object
   ): Function {
     const vm: Component = this
+    // 如果cb是对象, 则代表其包含了handler和options, 
+    // 这里通过createWatcher创建watch
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
     options.user = true
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    // immediate为真时, 立即执行一次cb
     if (options.immediate) {
       cb.call(vm, watcher.value)
     }
