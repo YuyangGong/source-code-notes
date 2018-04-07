@@ -437,6 +437,7 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
 export function mergeOptions (
   parent: Object,
   child: Object,
+  // 这里的vm只用于错误追踪
   vm?: Component
 ): Object {
   if (process.env.NODE_ENV !== 'production') {
@@ -467,6 +468,8 @@ export function mergeOptions (
     mergeField(key)
   }
   for (key in child) {
+    // 如果出现与parent中重名的属性, 则直接跳过
+    // 因为在上一步遍历parent的时候已经处理了
     if (!hasOwn(parent, key)) {
       mergeField(key)
     }
