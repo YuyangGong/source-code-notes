@@ -25,6 +25,8 @@ const normalizeEvent = cached((name: string): {
   }
 })
 
+// 创建函数调用器(Invoker),
+// 并将需被调用的函数挂载在这个调用器的fns属性上
 export function createFnInvoker (fns: Function | Array<Function>): Function {
   function invoker () {
     const fns = invoker.fns
@@ -35,6 +37,7 @@ export function createFnInvoker (fns: Function | Array<Function>): Function {
       }
     } else {
       // return handler return value for single handlers
+      // 单个handler的时候, 返回handler的返回值
       return fns.apply(null, arguments)
     }
   }
