@@ -11,6 +11,8 @@ const normalizeEvent = cached((name: string): {
   handler?: Function,
   params?: Array<any>
 } => {
+  // name中的`&~!`依次代表passive, once, capture
+  // 为什么用charAt(0), 而不是直接[0], 而且0也可以省略(省一个字符)
   const passive = name.charAt(0) === '&'
   name = passive ? name.slice(1) : name
   const once = name.charAt(0) === '~' // Prefixed last, checked first
@@ -45,6 +47,7 @@ export function createFnInvoker (fns: Function | Array<Function>): Function {
   return invoker
 }
 
+// 更新listeners
 export function updateListeners (
   on: Object,
   oldOn: Object,
@@ -71,9 +74,17 @@ export function updateListeners (
       if (isUndef(cur.fns)) {
         cur = on[name] = createFnInvoker(cur)
       }
+      // add和remove都是通过name判断的,
+      // name又通过前缀的`&~!`来判断是否是passive, once, capture,
+      // 每次修改了这三个修饰符, name也会变动, 被当做了另外的
+      // 一种event了, 比如`&click`和`~click`虽然都绑定的click事件,
+      // 但是修饰符不同, name也就不同, 挂载在on的不同属性上
       add(event.name, cur, event.once, event.capture, event.passive, event.params)
     } else if (cur !== old) {
+      // 如果cur和old都存在, 只是不相等的话, 则直接通过修改旧的事件监听器,
+      // 设置其fns为新事件监听器的handler
       old.fns = cur
+      // WHY 这里为什么要赋值到on[name]上
       on[name] = old
     }
   }
