@@ -25,10 +25,11 @@ export function initExtend (Vue: GlobalAPI) {
     const Super = this
     const SuperId = Super.cid
     const cachedCtors = extendOptions._Ctor || (extendOptions._Ctor = {})
+    // 如果已经存在于缓存当中, 则直接返回
     if (cachedCtors[SuperId]) {
       return cachedCtors[SuperId]
     }
-
+    // 如果extendOptions中不存在name, 就直接用super的name
     const name = extendOptions.name || Super.options.name
     if (process.env.NODE_ENV !== 'production' && name) {
       validateComponentName(name)
@@ -49,6 +50,8 @@ export function initExtend (Vue: GlobalAPI) {
     // For props and computed properties, we define the proxy getters on
     // the Vue instances at extension time, on the extended prototype. This
     // avoids Object.defineProperty calls for each instance created.
+    // 对于props和computed属性, 在Vue实例上对其做代理(通过挂载在Vue.prototype上),
+    // 避免每一个新实例创建时候都进行一次Object.defineProperty, 统一放在原型链上处理
     if (Sub.options.props) {
       initProps(Sub)
     }
