@@ -22,15 +22,20 @@ export function registerRef (vnode: VNodeWithData, isRemoval: ?boolean) {
   if (!isDef(key)) return
 
   const vm = vnode.context
+  // 获取ref指向的组件实例或DOM节点
   const ref = vnode.componentInstance || vnode.elm
   const refs = vm.$refs
   if (isRemoval) {
     if (Array.isArray(refs[key])) {
       remove(refs[key], ref)
     } else if (refs[key] === ref) {
+      // WHY: 为什么不用delete, 是因为delete性能差么
+      // 这样设置为undefined, key in refs 返回的还是true,
+      // Object.hasOwnProperty(refs, key)返回的也是true
       refs[key] = undefined
     }
   } else {
+    // 将ref添加到vm.$refs中去
     if (vnode.data.refInFor) {
       if (!Array.isArray(refs[key])) {
         refs[key] = [ref]
