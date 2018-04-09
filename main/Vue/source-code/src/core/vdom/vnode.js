@@ -7,26 +7,53 @@ export default class VNode {
   text: string | void;
   elm: Node | void;
   ns: string | void;
-  context: Component | void; // rendered in this component's scope
+  // rendered in this component's scope
+  // context指定虚拟节点所处于的组件
+  context: Component | void;
   key: string | number | void;
   componentOptions: VNodeComponentOptions | void;
-  componentInstance: Component | void; // component instance
-  parent: VNode | void; // component placeholder node
+  // component instance
+  // 组件实例(WHY: 这个具体与context有何不同？)
+  componentInstance: Component | void;
+  // component placeholder node
+  // 组件占位节点(WHY: 这个与componentInstance和context又有何不同)
+  parent: VNode | void;
 
   // strictly internal
-  raw: boolean; // contains raw HTML? (server only)
-  isStatic: boolean; // hoisted static node
-  isRootInsert: boolean; // necessary for enter transition check
-  isComment: boolean; // empty comment placeholder?
-  isCloned: boolean; // is a cloned node?
-  isOnce: boolean; // is a v-once node?
-  asyncFactory: Function | void; // async component factory function
+  // 严格局限于内部(WHY: 还是应该翻译成内部私有变量？)
+  // contains raw HTML? (server only)
+  // 原始html(仅仅在server中用到)
+  raw: boolean;
+  // hoisted static node
+  // 提升静态节点(WHY: 为什么要hoisted?)
+  isStatic: boolean;
+  // necessary for enter transition check
+  // 必须存在此属性, 进入transition时会检查其
+  isRootInsert: boolean;
+  // empty comment placeholder?
+  // 空的注释占位符
+  isComment: boolean;
+  // is a cloned node?
+  // 是否是克隆的节点
+  isCloned: boolean;
+  // is a v-once node?
+  // 是否是v-once节点
+  isOnce: boolean;
+  // async component factory function
+  // 异步组件的工厂函数
+  asyncFactory: Function | void;
   asyncMeta: Object | void;
   isAsyncPlaceholder: boolean;
   ssrContext: Object | void;
-  fnContext: Component | void; // real context vm for functional nodes
-  fnOptions: ?ComponentOptions; // for SSR caching
-  fnScopeId: ?string; // functioanl scope id support
+  // real context vm for functional nodes
+  // 用于函数式节点的真实的上下文vm实例
+  fnContext: Component | void;
+  // for SSR caching
+  // 用于SSR检查
+  fnOptions: ?ComponentOptions;
+  // functioanl scope id support
+  // 函数式作用域id支持
+  fnScopeId: ?string;
 
   constructor (
     tag?: string,
