@@ -91,12 +91,15 @@ export default class VNode {
   }
 
   // DEPRECATED: alias for componentInstance for backwards compat.
+  // 已废弃: 现在用componentInstance代替,
+  // 为向后兼容, 所以这里仍然保留了child的getter
   /* istanbul ignore next */
   get child (): Component | void {
     return this.componentInstance
   }
 }
 
+// 创建空的虚拟节点, 使用者可以传一个字符串作为其text
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text
@@ -104,6 +107,14 @@ export const createEmptyVNode = (text: string = '') => {
   return node
 }
 
+// 与上面不同的是这里没有设置node.isComment为true
+// WHY: 为什么不和上面的createEmptyVNode统一风格
+// 写成这种:
+// ```
+// const node = new VNode()
+// node.text = String(val)
+// return node
+// ```
 export function createTextVNode (val: string | number) {
   return new VNode(undefined, undefined, undefined, String(val))
 }
@@ -112,6 +123,13 @@ export function createTextVNode (val: string | number) {
 // used for static nodes and slot nodes because they may be reused across
 // multiple renders, cloning them avoids errors when DOM manipulations rely
 // on their elm reference.
+// 优化后的浅克隆, 其只克隆一层, 并设置isClone为true,
+// 用于静态节点和slot节点, 因为他们可能在多个renders中被复用,
+// 克隆其可以避免他们elm引用的DOM在进行操作时候发生的errors,
+// 譬如俩个地方都用到了节点a, 第一个地方需要修改a的属性elm,
+// 如果不进行这一层克隆的话, 第二个用到节点a的地方也会因为第一个
+// 地方对a.elm的修改而修改(因为传的是引用), 这里不需要考虑更
+// 深的层级, 这种情况只会修改VNode上的属性, 而不会修改其属性的属性
 export function cloneVNode (vnode: VNode): VNode {
   const cloned = new VNode(
     vnode.tag,
