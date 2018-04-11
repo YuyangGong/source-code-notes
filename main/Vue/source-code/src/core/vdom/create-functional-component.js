@@ -15,6 +15,7 @@ import {
   validateProp
 } from '../util/index'
 
+// 函数渲染上下文的构造函数
 function FunctionalRenderContext (
   data,
   props,
@@ -33,15 +34,21 @@ function FunctionalRenderContext (
 
   // ensure the createElement function in functional components
   // gets a unique context - this is necessary for correct named slot check
+  // 确保函数组件中的createElement函数可以获得一个唯一的context，
+  // 为了正确的进行具名slot的检查, 这是必需的
   const contextVm = Object.create(parent)
+  // 是否已经编译过了, 如果已经编译过了就不需要normalization了
   const isCompiled = isTrue(options._compiled)
   const needNormalization = !isCompiled
 
   // support for compiled functional template
+  // 为了支持编译函数式模板
   if (isCompiled) {
     // exposing $options for renderStatic()
+    // 暴露$options, 以便渲染静态节点
     this.$options = options
     // pre-resolve slots for renderSlot()
+    // 预解析slots, 以便渲染slot
     this.$slots = this.slots()
     this.$scopedSlots = data.scopedSlots || emptyObject
   }
@@ -60,6 +67,7 @@ function FunctionalRenderContext (
   }
 }
 
+// 把render辅助函数挂载到FunctionalRenderContext的原型上, 方便其实例使用
 installRenderHelpers(FunctionalRenderContext.prototype)
 
 export function createFunctionalComponent (
@@ -103,6 +111,7 @@ export function createFunctionalComponent (
   }
 }
 
+// 设置VNode的context
 function setFunctionalContextForVNode (vnode, data, vm, options) {
   vnode.fnContext = vm
   vnode.fnOptions = options
@@ -111,6 +120,8 @@ function setFunctionalContextForVNode (vnode, data, vm, options) {
   }
 }
 
+// 合并props, 将from上的属性复制到to上,
+// 其属性key需转换为驼峰命名法
 function mergeProps (to, from) {
   for (const key in from) {
     to[camelize(key)] = from[key]
