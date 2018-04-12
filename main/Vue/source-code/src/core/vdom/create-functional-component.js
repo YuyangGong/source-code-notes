@@ -53,7 +53,10 @@ function FunctionalRenderContext (
     this.$scopedSlots = data.scopedSlots || emptyObject
   }
 
+  // 这里是关于scoped函数式组件的相关逻辑
   if (options._scopeId) {
+    // 给其实例上增加一个_c方法, 用于给createElement包装一层,
+    // 其主要逻辑是设置了fnScopeId和fnContext
     this._c = (a, b, c, d) => {
       const vnode = createElement(contextVm, a, b, c, d, needNormalization)
       if (vnode && !Array.isArray(vnode)) {
@@ -63,6 +66,8 @@ function FunctionalRenderContext (
       return vnode
     }
   } else {
+    // 如果不是scope函数式组件的话,
+    // _c中就不包括设置fnScopeId和fnContext的逻辑
     this._c = (a, b, c, d) => createElement(contextVm, a, b, c, d, needNormalization)
   }
 }
@@ -70,6 +75,7 @@ function FunctionalRenderContext (
 // 把render辅助函数挂载到FunctionalRenderContext的原型上, 方便其实例使用
 installRenderHelpers(FunctionalRenderContext.prototype)
 
+// 创建函数式组件
 export function createFunctionalComponent (
   Ctor: Class<Component>,
   propsData: ?Object,
@@ -97,8 +103,12 @@ export function createFunctionalComponent (
     Ctor
   )
 
+  // 通过render创建vnode, 值得注意的是this的指向为null
   const vnode = options.render.call(null, renderContext._c, renderContext)
 
+  // render函数返回的vnode可能是数组, 也可能是单个的VNode实例,
+  // 如果即不是数组, 又不是vnode的实例, eg: render直接返回字符串,
+  // createFunctionalComponent函数最终便会返回undefined(这里没有显式返回)
   if (vnode instanceof VNode) {
     setFunctionalContextForVNode(vnode, data, contextVm, options)
     return vnode
