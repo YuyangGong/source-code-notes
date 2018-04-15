@@ -322,7 +322,10 @@ export function activateChildComponent (vm: Component, direct?: boolean) {
   }
   if (vm._inactive || vm._inactive === null) {
     vm._inactive = false
-    // 递归active后代组件, 触发后代的active钩子
+    // 递归active后代组件, 触发后代的active钩子,
+    // 值得注意的是这里是先执行了子元素的activateChildComponent,
+    // 再调用了activated钩子, 换句话说, 子组件的activated钩子在父
+    // 组件之前调用
     for (let i = 0; i < vm.$children.length; i++) {
       activateChildComponent(vm.$children[i])
     }
