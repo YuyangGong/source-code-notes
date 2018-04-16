@@ -9,6 +9,7 @@
  * Not type-checking this because this file is perf-critical and the cost
  * of making flow understand it is not worth it.
  */
+// 由Snabbdom的虚拟dom节点的patch算法修改而来
 
 import VNode, { cloneVNode } from './vnode'
 import config from '../config'
