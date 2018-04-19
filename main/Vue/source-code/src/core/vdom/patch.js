@@ -29,10 +29,24 @@ import {
   isPrimitive
 } from '../util/index'
 
+// 与createEmptyNode不同的是:
+// 1. node.isComment没有设置为true
+// 2. 第二参数(data)设置为了空对象`{}`, 第三参数(children)设置为了空数组`[]`
+// 而createEmptyNode, 则是将其都设置为undefined
 export const emptyNode = new VNode('', {}, [])
 
+// patch的五种钩子
 const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
 
+// 判断是否是相同的VNode,
+// 其引用肯定是不一样的, 这个函数主要用于patch的时候检查VNode是否改变。
+// 当满足一下条件时, 则可以认为这俩个VNode是相同的 
+// * key相同
+// * 满足以下俩种情况之一 
+//   1. 同步Vnode的情况, a与b的tag, isComment, input类型相同,
+//      且都存在或者都不存在data(这里只是简单检查data的存在情况, 不会深入检查)
+//   2. 异步Vnode的情况, a为异步组件占位符, b的异步工厂的error函数不存在,
+//      且a和b的异步工厂函数相同
 function sameVnode (a, b) {
   return (
     a.key === b.key && (
@@ -50,6 +64,9 @@ function sameVnode (a, b) {
   )
 }
 
+// 判断input类型是否相同, 判断依据如下:
+// 其data.attrs.type相同 或者 都是text类型的input(如text,number,password,search,email,tel,url)
+// 举个例子, 当a的type为'text', b的type为'number', 其也属于sameInputType
 function sameInputType (a, b) {
   if (a.tag !== 'input') return true
   let i
