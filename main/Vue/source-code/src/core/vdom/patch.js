@@ -75,6 +75,7 @@ function sameInputType (a, b) {
   return typeA === typeB || isTextInputType(typeA) && isTextInputType(typeB)
 }
 
+// 创建一个map, 用于储存key相应的children的索引
 function createKeyToOldIdx (children, beginIdx, endIdx) {
   let i, key
   const map = {}
@@ -90,7 +91,9 @@ export function createPatchFunction (backend) {
   const cbs = {}
 
   const { modules, nodeOps } = backend
-
+  
+  // 把modules中所有元素的钩子都映射进cbs对象中,
+  // 以hook为key储存hooks数组
   for (i = 0; i < hooks.length; ++i) {
     cbs[hooks[i]] = []
     for (j = 0; j < modules.length; ++j) {
@@ -99,11 +102,12 @@ export function createPatchFunction (backend) {
       }
     }
   }
-
+  // 创建与elm同标签名的空VNode
   function emptyNodeAt (elm) {
     return new VNode(nodeOps.tagName(elm).toLowerCase(), {}, [], undefined, elm)
   }
 
+  // 创建移除节点的回调, 只有当listeners为0时, 才会用remove一开始传入的childElm
   function createRmCb (childElm, listeners) {
     function remove () {
       if (--remove.listeners === 0) {
@@ -115,13 +119,20 @@ export function createPatchFunction (backend) {
   }
 
   function removeNode (el) {
+    // 先获取父节点, 再从父节点中删除
     const parent = nodeOps.parentNode(el)
     // element may have already been removed due to v-html / v-text
+    // 其父元素可能已经被移除了(v-html, v-text的情况)
     if (isDef(parent)) {
       nodeOps.removeChild(parent, el)
     }
   }
 
+  // 是否是未知元素, 其判断依据如下(需要满足如下所有条件)
+  // 1. inVPre(因在v-pre中时, 应该直接跳过)为false
+  // 2. vnode不存在命名空间
+  // 3. 不属于config中应被忽略的元素
+  // 4. 调用config.isUnknownElement(用户定义)后返回true
   function isUnknownElement (vnode, inVPre) {
     return (
       !inVPre &&
@@ -140,6 +151,7 @@ export function createPatchFunction (backend) {
 
   let creatingElmInVPre = 0
 
+  // 创建节点, 如果满足条件也插入要页面中
   function createElm (
     vnode,
     insertedVnodeQueue,
@@ -155,10 +167,18 @@ export function createPatchFunction (backend) {
       // potential patch errors down the road when it's used as an insertion
       // reference node. Instead, we clone the node on-demand before creating
       // associated DOM element for it.
+      // 当vnode.elm和ownerArray都已定义的时候, 代表这个vnode已经
+      // 在之前的render中使用过了。
+      // 现在其作为一个新的node使用, 重写其elm可能造成潜在的patch错误(当其作为
+      // 插入引用节点使用时). 所以, 我们在需要的时候于创建相应dom元素之前对其
+      // 进行clone。
       vnode = ownerArray[index] = cloneVNode(vnode)
     }
-
-    vnode.isRootInsert = !nested // for transition enter check
+    
+    // for transition enter check
+    // 用于transition(常用于动画)的enter检查
+    vnode.isRootInsert = !nested
+    // 如果组件以及创建, 则直接返回, 不额外创建多余节点
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return
     }
@@ -229,6 +249,7 @@ export function createPatchFunction (backend) {
     let i = vnode.data
     if (isDef(i)) {
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
+      // 触发钩子(vnode.data.hook.init, 如果存在的话)
       if (isDef(i = i.hook) && isDef(i = i.init)) {
         i(vnode, false /* hydrating */, parentElm, refElm)
       }
@@ -236,6 +257,9 @@ export function createPatchFunction (backend) {
       // it should've created a child instance and mounted it. the child
       // component also has set the placeholder vnode's elm.
       // in that case we can just return the element and be done.
+      // 在调用init钩子之后, 如果此时vnode是一个子组件的话,
+      // 其应该已经创建了一个子组件实例并挂载。此时的这个子组件应该设置为
+      // vnode的elm占位符。这种情况下我们可以返回true, 代表这个节点已经创建
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
         if (isTrue(isReactivated)) {
