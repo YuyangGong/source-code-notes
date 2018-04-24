@@ -270,6 +270,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   data = data.replace(/,$/, '') + '}'
   // v-bind data wrap
+  // 处理v-bind:object(直接绑定一个对象作为props)逻辑, 其在props之后进行
   if (el.wrapData) {
     data = el.wrapData(data)
   }
