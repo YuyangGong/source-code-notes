@@ -50,7 +50,7 @@ export default ({
   /**
    * Show production mode tip message on boot?
    */
-  // 是否在控制台显示生产环境模式的提升
+  // 是否在控制台显示生产环境模式的提示
   productionTip: process.env.NODE_ENV !== 'production',
 
   /**

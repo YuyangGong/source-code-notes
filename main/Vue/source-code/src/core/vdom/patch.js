@@ -132,7 +132,7 @@ export function createPatchFunction (backend) {
   // 1. inVPre(因在v-pre中时, 应该直接跳过)为false
   // 2. vnode不存在命名空间
   // 3. 不属于config中应被忽略的元素
-  // 4. 调用config.isUnknownElement(用户定义)后返回true
+  // 4. 调用config.isUnknownElement(依赖于平台)后返回true
   function isUnknownElement (vnode, inVPre) {
     return (
       !inVPre &&
