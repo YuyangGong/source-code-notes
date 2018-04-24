@@ -68,6 +68,7 @@ function genAttrSegment (name: string, value: string): StringSegment {
     // force double quote
     value = value.replace(/^'|'$/g, '"')
     // force enumerated attr to "true"
+    // 强制可枚举属性的值为true(如果其不会false的话)
     if (isEnumeratedAttr(name) && value !== `"false"`) {
       value = `"true"`
     }

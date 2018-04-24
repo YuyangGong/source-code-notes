@@ -50,7 +50,7 @@ export function bindObjectProps (
           hash = data
         } else {
           const type = data.attrs && data.attrs.type
-          // mustUseProp判断是否是必须传入的prop, 根据平台而定。
+          // mustUseProp判断是否是必须使用的prop, 根据平台而定。
           // 一般是直接使用data.attrs
           hash = asProp || config.mustUseProp(tag, type, key)
             ? data.domProps || (data.domProps = {})
