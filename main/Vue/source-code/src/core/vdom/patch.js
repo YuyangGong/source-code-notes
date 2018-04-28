@@ -353,6 +353,7 @@ export function createPatchFunction (backend) {
       for (let i = 0; i < children.length; ++i) {
         createElm(children[i], insertedVnodeQueue, vnode.elm, null, true, children, i)
       }
+    // 如果children不是数组, 且vnode.text存在, 则将其生成一个text节点并append
     } else if (isPrimitive(vnode.text)) {
       nodeOps.appendChild(vnode.elm, nodeOps.createTextNode(String(vnode.text)))
     }
@@ -366,12 +367,19 @@ export function createPatchFunction (backend) {
     }
     return isDef(vnode.tag)
   }
-
+  
+  // 调用create钩子, 三种情况(不冲突)
+  // 1. 调用cbs上的所有create钩子
+  // 2. 调用vnode.data.hook上的create钩子
+  // 3. 如果vnode.data.hook.insert存在, 则用insertedVnodeQueue
+  // 保存当前vnode, 以便insert后, 统一调用其insert钩子
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
     for (let i = 0; i < cbs.create.length; ++i) {
       cbs.create[i](emptyNode, vnode)
     }
-    i = vnode.data.hook // Reuse variable
+    // Reuse variable
+    // 复用变量
+    i = vnode.data.hook
     if (isDef(i)) {
       if (isDef(i.create)) i.create(emptyNode, vnode)
       if (isDef(i.insert)) insertedVnodeQueue.push(vnode)
@@ -625,7 +633,7 @@ export function createPatchFunction (backend) {
     }
   }
 
-  function (vnode, queue, initial) {
+  function invokeInsertHook (vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
     if (isTrue(initial) && isDef(vnode.parent)) {
