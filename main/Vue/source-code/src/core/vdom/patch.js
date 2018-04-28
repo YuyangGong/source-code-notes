@@ -129,7 +129,7 @@ export function createPatchFunction (backend) {
   }
 
   // 是否是未知元素, 其判断依据如下(需要满足如下所有条件)
-  // 1. inVPre(因在v-pre中时, 应该直接跳过)为false
+  // 1. inVPre(因在v-pre中时, 应该直接跳过)为假值
   // 2. vnode不存在命名空间
   // 3. 不属于config中应被忽略的元素
   // 4. 调用config.isUnknownElement(依赖于平台)后返回true
@@ -148,7 +148,10 @@ export function createPatchFunction (backend) {
       config.isUnknownElement(vnode.tag)
     )
   }
-
+  // 用于辅助isUnknownElement(仅仅在开发环境中启用)监控是否在v-pre中, 
+  // 因为可能存在嵌套的情况, 所以不能通过
+  // 简单的设置true或false, 而是用一个数字保存其嵌套层数, 每次结束一层嵌套减一,
+  // 而增加一层嵌套则加一
   let creatingElmInVPre = 0
 
   // 创建节点, 如果满足条件也插入要页面中
@@ -178,7 +181,7 @@ export function createPatchFunction (backend) {
     // for transition enter check
     // 用于transition(常用于动画)的enter检查
     vnode.isRootInsert = !nested
-    // 如果组件以及创建, 则直接返回, 不额外创建多余节点
+    // 如果组件已经创建, 则直接返回, 不额外创建多余节点
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return
     }
@@ -186,6 +189,7 @@ export function createPatchFunction (backend) {
     const data = vnode.data
     const children = vnode.children
     const tag = vnode.tag
+    // 分三种情况, 1. 标签(包括自定义组件) 2. 注释 3. 文本
     if (isDef(tag)) {
       if (process.env.NODE_ENV !== 'production') {
         if (data && data.pre) {
@@ -204,6 +208,7 @@ export function createPatchFunction (backend) {
       vnode.elm = vnode.ns
         ? nodeOps.createElementNS(vnode.ns, tag)
         : nodeOps.createElement(tag, vnode)
+      // 创建element后设置scope
       setScope(vnode)
 
       /* istanbul ignore if */
@@ -211,9 +216,12 @@ export function createPatchFunction (backend) {
         // in Weex, the default insertion order is parent-first.
         // List items can be optimized to use children-first insertion
         // with append="tree".
+        // 在weex中, 默认先插入parent, 再插入其后代。
+        // 可以通过设置append为tree来优化, 使其可以先插入后代。
         const appendAsTree = isDef(data) && isTrue(data.appendAsTree)
         if (!appendAsTree) {
           if (isDef(data)) {
+            // 调用created钩子
             invokeCreateHooks(vnode, insertedVnodeQueue)
           }
           insert(parentElm, vnode.elm, refElm)
@@ -226,6 +234,7 @@ export function createPatchFunction (backend) {
           insert(parentElm, vnode.elm, refElm)
         }
       } else {
+        // 非WEEX环境下, 统一(且只能)先插入后代(即children-first)
         createChildren(vnode, children, insertedVnodeQueue)
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue)
@@ -271,19 +280,25 @@ export function createPatchFunction (backend) {
   }
 
   function initComponent (vnode, insertedVnodeQueue) {
+    // 如果处于挂起的insert操作, push进insertedVnodeQueue队列
     if (isDef(vnode.data.pendingInsert)) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
-      vnode.data.pendingInsert = null
+      vnode.data.pendingInsert = null 
     }
+    // 将组件实例上的$el赋值到虚拟节点elm上
     vnode.elm = vnode.componentInstance.$el
+    // 如果可以patch, 则调用创建钩子并设置作用域
     if (isPatchable(vnode)) {
       invokeCreateHooks(vnode, insertedVnodeQueue)
       setScope(vnode)
     } else {
       // empty component root.
       // skip all element-related modules except for ref (#3455)
+      // 空的组件根元素。
+      // 跳过所有除了ref以外的组件相关模块
       registerRef(vnode)
       // make sure to invoke the insert hook
+      // 确保调用插入钩子
       insertedVnodeQueue.push(vnode)
     }
   }
@@ -335,6 +350,8 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 是否可以patch, 查询其最根部的虚拟节点,
+  // 如果其tag已定义, 代表可以patch
   function isPatchable (vnode) {
     while (vnode.componentInstance) {
       vnode = vnode.componentInstance._vnode
@@ -599,7 +616,7 @@ export function createPatchFunction (backend) {
     }
   }
 
-  function invokeInsertHook (vnode, queue, initial) {
+  function (vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
     if (isTrue(initial) && isDef(vnode.parent)) {
