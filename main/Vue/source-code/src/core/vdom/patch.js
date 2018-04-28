@@ -303,12 +303,15 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 再次activate组件
   function reactivateComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
     let i
     // hack for #4339: a reactivated component with inner transition
     // does not trigger because the inner node's created hooks are not called
     // again. It's not ideal to involve module-specific logic in here but
     // there doesn't seem to be a better way to do it.
+    // 依次检查器是否是其祖先链上的虚拟节点是否同时有data和transition,
+    // 如果有的话就触发所有activate钩子
     let innerNode = vnode
     while (innerNode.componentInstance) {
       innerNode = innerNode.componentInstance._vnode
@@ -322,9 +325,13 @@ export function createPatchFunction (backend) {
     }
     // unlike a newly created component,
     // a reactivated keep-alive component doesn't insert itself
+    // 和新创建的组件不一样的是,
+    // 一个再次activated的keep-alive组件不会插入其自身(也不需要)
     insert(parentElm, vnode.elm, refElm)
   }
-
+  
+  // 1. 如果有ref存在, 且parent为其父节点, 则将新节点elm插入到其之前
+  // 2. 如果ref不存在, 则把新节点elm直接append到parent节点的尾部
   function insert (parent, elm, ref) {
     if (isDef(parent)) {
       if (isDef(ref)) {
@@ -337,6 +344,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 创建children
   function createChildren (vnode, children, insertedVnodeQueue) {
     if (Array.isArray(children)) {
       if (process.env.NODE_ENV !== 'production') {
@@ -531,6 +539,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 检查children(常用于for列表或者if, else)是否有重复key值
   function checkDuplicateKeys (children) {
     const seenKeys = {}
     for (let i = 0; i < children.length; i++) {
