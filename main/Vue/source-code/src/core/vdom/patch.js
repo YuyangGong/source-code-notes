@@ -118,6 +118,7 @@ export function createPatchFunction (backend) {
     return remove
   }
 
+  // 删除节点
   function removeNode (el) {
     // 先获取父节点, 再从父节点中删除
     const parent = nodeOps.parentNode(el)
@@ -254,6 +255,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 创建组件
   function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
     let i = vnode.data
     if (isDef(i)) {
@@ -279,6 +281,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 初始化组件
   function initComponent (vnode, insertedVnodeQueue) {
     // 如果处于挂起的insert操作, push进insertedVnodeQueue队列
     if (isDef(vnode.data.pendingInsert)) {
@@ -389,11 +392,17 @@ export function createPatchFunction (backend) {
   // set scope id attribute for scoped CSS.
   // this is implemented as a special case to avoid the overhead
   // of going through the normal attribute patching process.
+  // 为具有作用域的CSS设置作用域id属性(data-id)。
+  // 这个实现作为特殊的例子, 避免经历上面的常规属性pactch过程。
   function setScope (vnode) {
     let i
+    // 如果vnode.fnScopeId存在, 将fnScopeId设置为elm的作用域属性
     if (isDef(i = vnode.fnScopeId)) {
       nodeOps.setAttribute(vnode.elm, i, '')
     } else {
+      // 如果vnode.fnScopeId不存在, 则沿着祖先链向上查询,
+      // 如果查询到了其context和context.$options._scopeId都存在, 即
+      // 将context.$options._scopeId设置为elm的作用域属性
       let ancestor = vnode
       while (ancestor) {
         if (isDef(i = ancestor.context) && isDef(i = i.$options._scopeId)) {
@@ -403,6 +412,8 @@ export function createPatchFunction (backend) {
       }
     }
     // for slot content they should also get the scopeId from the host instance.
+    // 对于slot内容, 他们从当前存在的host实例(即父组件, 而不是子组件)
+    // 上获得scopeId(如果有的话)
     if (isDef(i = activeInstance) &&
       i !== vnode.context &&
       i !== vnode.fnContext &&
@@ -412,19 +423,25 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 添加vnode数组
   function addVnodes (parentElm, refElm, vnodes, startIdx, endIdx, insertedVnodeQueue) {
     for (; startIdx <= endIdx; ++startIdx) {
       createElm(vnodes[startIdx], insertedVnodeQueue, parentElm, refElm, false, vnodes, startIdx)
     }
   }
 
+  // 调用destroy钩子
   function invokeDestroyHook (vnode) {
     let i, j
     const data = vnode.data
     if (isDef(data)) {
+      // 1. 如果vnode上存在destory钩子(vnode.data.hook.destory),
+      // 则直接先调用
       if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode)
+      // 2. 然后调用cbs上的destory钩子
       for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
     }
+    // 3. 递归调用子vnode的destory钩子
     if (isDef(i = vnode.children)) {
       for (j = 0; j < vnode.children.length; ++j) {
         invokeDestroyHook(vnode.children[j])
@@ -432,6 +449,9 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 移除VNodes。
+  // 如果是tag存在, 则移除其并调用相关钩子,
+  // 如果tag不存在, 代表其为文本节点, 直接移除, 不需要调用相关钩子
   function removeVnodes (parentElm, vnodes, startIdx, endIdx) {
     for (; startIdx <= endIdx; ++startIdx) {
       const ch = vnodes[startIdx]
@@ -439,38 +459,55 @@ export function createPatchFunction (backend) {
         if (isDef(ch.tag)) {
           removeAndInvokeRemoveHook(ch)
           invokeDestroyHook(ch)
-        } else { // Text node
+        } else {
+          // Text node
+          // 文本节点
           removeNode(ch.elm)
         }
       }
     }
   }
 
+  // 移除节点并调用相关钩子
   function removeAndInvokeRemoveHook (vnode, rm) {
     if (isDef(rm) || isDef(vnode.data)) {
       let i
+      // 用来监听是否所有的remove回调都执行了,
+      // 只有在最后一个remove回调执行后, 才会执行rm中的真正移除
+      // 节点的逻辑, 这里加1是因为, createRmCb中是前置的--
       const listeners = cbs.remove.length + 1
       if (isDef(rm)) {
         // we have a recursively passed down rm callback
         // increase the listeners count
+        // 我们有一个递归传递rm回调
+        // 增加listeners的计数
+        // WHY: 这个rm有什么用呢？
         rm.listeners += listeners
       } else {
         // directly removing
         rm = createRmCb(vnode.elm, listeners)
       }
+
+      // remove钩子的触发顺序:
+      // 1. componentInstance在当前节点之前触发remove钩子,
+      // 2. cbs的remove钩子又在vnode.data.hook.remove之前触发
+
       // recursively invoke hooks on child component root node
+      // 在子组件根节点上递归调用钩子(vnode.componentInstance._vnode.data)
       if (isDef(i = vnode.componentInstance) && isDef(i = i._vnode) && isDef(i.data)) {
         removeAndInvokeRemoveHook(i, rm)
       }
       for (i = 0; i < cbs.remove.length; ++i) {
         cbs.remove[i](vnode, rm)
       }
+      // 这里如果有vnode.data.hook.remove钩子, 则执行, 否则直接rm
       if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
         i(vnode, rm)
       } else {
         rm()
       }
     } else {
+      // 如果data不存在(代表其没有相关钩子), 且rm未定义时, 直接移除
       removeNode(vnode.elm)
     }
   }
@@ -566,6 +603,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 在oldCh中查找node的索引, 如果node不存在则返回undefined
   function findIdxInOld (node, oldCh, start, end) {
     for (let i = start; i < end; i++) {
       const c = oldCh[i]
@@ -633,9 +671,12 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 调用插入钩子
   function invokeInsertHook (vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
+    // 为组件根节点延迟执行插入钩子, 只有在其元素真正被插入后才
+    // 调用插入钩子
     if (isTrue(initial) && isDef(vnode.parent)) {
       vnode.parent.data.pendingInsert = queue
     } else {
@@ -746,6 +787,10 @@ export function createPatchFunction (backend) {
     return true
   }
 
+  // 断言节点是否匹配.
+  // 1. 如果vnode.tag存在时, 检查其是否以`vue-component`开头,
+  // 或者其为合法的元素(非未知元素)且vnode.tag与node.tagName相同
+  // 2. 如果vnode.tag不存在, 则直接根据node.nodeType判断(注释节点为8, 其他为3)
   function assertNodeMatch (node, vnode, inVPre) {
     if (isDef(vnode.tag)) {
       return vnode.tag.indexOf('vue-component') === 0 || (
