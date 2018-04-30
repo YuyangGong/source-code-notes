@@ -2,6 +2,7 @@
 
 import { makeMap } from 'shared/util'
 
+// 是否是attribute
 const isAttr = makeMap(
   'accept,accept-charset,accesskey,action,align,alt,async,autocomplete,' +
   'autofocus,autoplay,autosave,bgcolor,border,buffered,challenge,charset,' +
@@ -19,6 +20,10 @@ const isAttr = makeMap(
 )
 
 /* istanbul ignore next */
+// 可渲染属性, 最终会出现在html中的属性, 以下三种可能
+// 1. 存在于上面attr列表中
+// 2. 以 `data-`开头的属性(dataset, 用户自定义属性)
+// 3. 以 `aria-`开头的属性(用于增强可访问性)
 const isRenderableAttr = (name: string): boolean => {
   return (
     isAttr(name) ||
@@ -42,6 +47,7 @@ const ESC = {
   '&': '&amp;'
 }
 
+// 编码html entity
 export function escape (s: string) {
   return s.replace(/[<>"&]/g, escapeChar)
 }
