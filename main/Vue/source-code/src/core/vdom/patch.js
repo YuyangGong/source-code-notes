@@ -512,6 +512,7 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 更新节点, 双指针技术
   function updateChildren (parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly) {
     let oldStartIdx = 0
     let newStartIdx = 0
@@ -526,6 +527,8 @@ export function createPatchFunction (backend) {
     // removeOnly is a special flag used only by <transition-group>
     // to ensure removed elements stay in correct relative positions
     // during leaving transitions
+    // 主要用于<transition-group>去确定transition离开时在正确的
+    // 相应位置去移除元素
     const canMove = !removeOnly
 
     if (process.env.NODE_ENV !== 'production') {
@@ -533,10 +536,12 @@ export function createPatchFunction (backend) {
     }
 
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+      // 跳过undefined的vnode
       if (isUndef(oldStartVnode)) {
         oldStartVnode = oldCh[++oldStartIdx] // Vnode has been moved left
       } else if (isUndef(oldEndVnode)) {
         oldEndVnode = oldCh[--oldEndIdx]
+      // 新旧的start节点或者新旧的old节点相同时, 则通过patch来更新
       } else if (sameVnode(oldStartVnode, newStartVnode)) {
         patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue)
         oldStartVnode = oldCh[++oldStartIdx]
@@ -545,11 +550,13 @@ export function createPatchFunction (backend) {
         patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue)
         oldEndVnode = oldCh[--oldEndIdx]
         newEndVnode = newCh[--newEndIdx]
+      // oldStart与newEnd相等时, 以后者更新前者, 并将oldStart插入到oldEnd之前
       } else if (sameVnode(oldStartVnode, newEndVnode)) { // Vnode moved right
         patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue)
         canMove && nodeOps.insertBefore(parentElm, oldStartVnode.elm, nodeOps.nextSibling(oldEndVnode.elm))
         oldStartVnode = oldCh[++oldStartIdx]
         newEndVnode = newCh[--newEndIdx]
+      // oldEnd与newStart相等时, 以后者更新前者, 并将oldEnd插入到头部的oldStart之后
       } else if (sameVnode(oldEndVnode, newStartVnode)) { // Vnode moved left
         patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue)
         canMove && nodeOps.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm)
@@ -557,28 +564,38 @@ export function createPatchFunction (backend) {
         newStartVnode = newCh[++newStartIdx]
       } else {
         if (isUndef(oldKeyToIdx)) oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
+        // 如果newStart的key(WHY: key为假值比如0的时候会不会有问题),
+        // 不存在的话, 会通过findIdxInOld去查找old中的索引。
+        // 如果存在的话, 则直接从oldKeyToIdx中查找
         idxInOld = isDef(newStartVnode.key)
           ? oldKeyToIdx[newStartVnode.key]
           : findIdxInOld(newStartVnode, oldCh, oldStartIdx, oldEndIdx)
-        if (isUndef(idxInOld)) { // New element
+        // New element
+        // 如果不存在同key可以复用的节点, 则创建新节点
+        if (isUndef(idxInOld)) {
           createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm, false, newCh, newStartIdx)
         } else {
           vnodeToMove = oldCh[idxInOld]
+          // WHY: 相同Vnode的逻辑判断, 如果上面用的是findIdxInOld的话, 这段判断就重复了, 是否可以精简
           if (sameVnode(vnodeToMove, newStartVnode)) {
             patchVnode(vnodeToMove, newStartVnode, insertedVnodeQueue)
+            // 已经复用了, 设置为undefined
             oldCh[idxInOld] = undefined
             canMove && nodeOps.insertBefore(parentElm, vnodeToMove.elm, oldStartVnode.elm)
           } else {
             // same key but different element. treat as new element
+            // 虽然key相同但是属于不同的元素, 依旧创建新元素
             createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm, false, newCh, newStartIdx)
           }
         }
         newStartVnode = newCh[++newStartIdx]
       }
     }
+    // 当oldCh都遍历完后, 则将剩余的为遍历到的newCh添加进我们的父节中(newEnd之前, 已添加的newStart之后)
     if (oldStartIdx > oldEndIdx) {
       refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
       addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue)
+    // 当newCh都遍历完后, 则移除剩余的未遍历到的oldCh
     } else if (newStartIdx > newEndIdx) {
       removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx)
     }
