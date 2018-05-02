@@ -512,7 +512,7 @@ export function createPatchFunction (backend) {
     }
   }
 
-  // 更新节点, 双指针技术
+  // 更新节点, diff算法的核心, 也用到了双指针技术
   function updateChildren (parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly) {
     let oldStartIdx = 0
     let newStartIdx = 0
@@ -628,11 +628,13 @@ export function createPatchFunction (backend) {
     }
   }
 
+  // 根据vnode对oldVnode进行patch
   function patchVnode (oldVnode, vnode, insertedVnodeQueue, removeOnly) {
     if (oldVnode === vnode) {
       return
     }
 
+    // 复用oldVnode的elm
     const elm = vnode.elm = oldVnode.elm
 
     if (isTrue(oldVnode.isAsyncPlaceholder)) {
@@ -648,6 +650,10 @@ export function createPatchFunction (backend) {
     // note we only do this if the vnode is cloned -
     // if the new node is not cloned it means the render functions have been
     // reset by the hot-reload-api and we need to do a proper re-render.
+    // 复用static树的组件实例, 需要满足
+    // 1. 都为static虚拟节点
+    // 2. key相同
+    // 3. 为cloned节点或者为isOnce只渲染一次节点
     if (isTrue(vnode.isStatic) &&
       isTrue(oldVnode.isStatic) &&
       vnode.key === oldVnode.key &&
@@ -659,30 +665,42 @@ export function createPatchFunction (backend) {
 
     let i
     const data = vnode.data
+    // 调用prepatch钩子
     if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
       i(oldVnode, vnode)
     }
 
     const oldCh = oldVnode.children
     const ch = vnode.children
+    // 如果不是初次执行, 则调用update钩子
     if (isDef(data) && isPatchable(vnode)) {
       for (i = 0; i < cbs.update.length; ++i) cbs.update[i](oldVnode, vnode)
       if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
     }
+    // 当vnode.text不存在, 代表其对应的实际节点不是纯本文节点,
+    // 所以这里我们还要处理其他情况, 比如子节点的各种情况
     if (isUndef(vnode.text)) {
+      // 都存在子节点时候, 更新其子节点
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
+      // 只有新vnode存在子节点时, 先清空老vnode对应节点的text(如果其有),
+      // 再将新vnode的子节点添加到当前elm上
       } else if (isDef(ch)) {
         if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '')
         addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue)
+      // 当只有老vnode存在子节点时, 从当前elm中移除其子节点
       } else if (isDef(oldCh)) {
         removeVnodes(elm, oldCh, 0, oldCh.length - 1)
+      // 当老vnode存在text时候, 设置当前elm的text为空
       } else if (isDef(oldVnode.text)) {
         nodeOps.setTextContent(elm, '')
       }
+    // 当新节点的text与旧节点不同时, 用新节点的text更新其elm
+    // (如果旧节点有子节点, 也会一并被覆盖, 这里设置的是textContent)
     } else if (oldVnode.text !== vnode.text) {
       nodeOps.setTextContent(elm, vnode.text)
     }
+    // patch后调用postpatch钩子
     if (isDef(data)) {
       if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
     }
