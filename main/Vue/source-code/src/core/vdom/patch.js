@@ -729,26 +729,31 @@ export function createPatchFunction (backend) {
   const isRenderedModule = makeMap('attrs,class,staticClass,staticStyle,key')
 
   // Note: this is a browser-only function so we can assume elms are DOM nodes.
+  // 注意: 这是一个只在浏览器上运行的函数, 我们可以认定elms为DOM节点
   function hydrate (elm, vnode, insertedVnodeQueue, inVPre) {
     let i
     const { tag, data, children } = vnode
     inVPre = inVPre || (data && data.pre)
     vnode.elm = elm
 
+    // 如果是注释节点, 并且存在异步工厂, 则其为异步占位符
     if (isTrue(vnode.isComment) && isDef(vnode.asyncFactory)) {
       vnode.isAsyncPlaceholder = true
       return true
     }
     // assert node match
+    // 检查节点是否匹配(WHY: 什么时候hydrate的传入会不匹配)
     if (process.env.NODE_ENV !== 'production') {
       if (!assertNodeMatch(elm, vnode, inVPre)) {
         return false
       }
     }
     if (isDef(data)) {
+      // 调用init钩子, 执行相关的initComponent操作
       if (isDef(i = data.hook) && isDef(i = i.init)) i(vnode, true /* hydrating */)
       if (isDef(i = vnode.componentInstance)) {
         // child component. it should have hydrated its own tree.
+        // 子组件应该在自己树中已经进行了hydrate
         initComponent(vnode, insertedVnodeQueue)
         return true
       }
@@ -756,10 +761,13 @@ export function createPatchFunction (backend) {
     if (isDef(tag)) {
       if (isDef(children)) {
         // empty element, allow client to pick up and populate children
+        // 空元素, 填充vnode的children
         if (!elm.hasChildNodes()) {
           createChildren(vnode, children, insertedVnodeQueue)
         } else {
           // v-html and domProps: innerHTML
+          // v-html和domprops, 使用innerHTML,
+          // 这里检查服务器端和客户端的innerHTML内容是否一样
           if (isDef(i = data) && isDef(i = i.domProps) && isDef(i = i.innerHTML)) {
             if (i !== elm.innerHTML) {
               /* istanbul ignore if */
@@ -776,6 +784,7 @@ export function createPatchFunction (backend) {
             }
           } else {
             // iterate and compare children lists
+            // 遍历并且比较children列表
             let childrenMatch = true
             let childNode = elm.firstChild
             for (let i = 0; i < children.length; i++) {
@@ -787,6 +796,7 @@ export function createPatchFunction (backend) {
             }
             // if childNode is not null, it means the actual childNodes list is
             // longer than the virtual children list.
+            // 如果childNode不是null, 意味着实际的childNodes列表比虚拟children列表长
             if (!childrenMatch || childNode) {
               /* istanbul ignore if */
               if (process.env.NODE_ENV !== 'production' &&
@@ -805,18 +815,24 @@ export function createPatchFunction (backend) {
       if (isDef(data)) {
         let fullInvoke = false
         for (const key in data) {
+          // 当data中不仅仅存在这几种key: attrs,class,staticClass,staticStyle,key,
+          // 则调用create钩子, 并跳出
           if (!isRenderedModule(key)) {
             fullInvoke = true
             invokeCreateHooks(vnode, insertedVnodeQueue)
             break
           }
         }
+        // 仅仅存在上述的五种key, 且存在class时才会traverse
         if (!fullInvoke && data['class']) {
           // ensure collecting deps for deep class bindings for future updates
+          // 确保收集了deps, 深class绑定的之后更新会用到
           traverse(data['class'])
         }
       }
     } else if (elm.data !== vnode.text) {
+      // WHY: 为什么要判断一下再赋值, 
+      // 赋值操作性能开销比全等于判断大很多么?还是这里要符合语义化
       elm.data = vnode.text
     }
     return true
