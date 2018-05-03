@@ -155,7 +155,7 @@ export function createPatchFunction (backend) {
   // 而增加一层嵌套则加一
   let creatingElmInVPre = 0
 
-  // 创建节点, 如果满足条件也插入要页面中
+  // 创建节点, 如果满足条件也插入到页面中
   function createElm (
     vnode,
     insertedVnodeQueue,
@@ -726,6 +726,9 @@ export function createPatchFunction (backend) {
   // are already rendered on the client or has no need for initialization
   // Note: style is excluded because it relies on initial clone for future
   // deep updates (#7063).
+  // hydrate时, 可以跳过create钩子的module列表, 因为其已经在客户端中
+  // 渲染或不需要初始化。
+  // 注意: style包括其中, 因为其依赖于初始化克隆(之后deep更新会用到)
   const isRenderedModule = makeMap('attrs,class,staticClass,staticStyle,key')
 
   // Note: this is a browser-only function so we can assume elms are DOM nodes.
@@ -855,6 +858,7 @@ export function createPatchFunction (backend) {
 
   return function patch (oldVnode, vnode, hydrating, removeOnly, parentElm, refElm) {
     if (isUndef(vnode)) {
+      // 调用oldVnode的destroy钩子
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode)
       return
     }
@@ -862,20 +866,27 @@ export function createPatchFunction (backend) {
     let isInitialPatch = false
     const insertedVnodeQueue = []
 
+    // oldVnode不存在时, 为初次渲染
     if (isUndef(oldVnode)) {
       // empty mount (likely as component), create new root element
+      // 空挂载(比如组件), 创建新的根元素
       isInitialPatch = true
       createElm(vnode, insertedVnodeQueue, parentElm, refElm)
     } else {
+      // nodeType不存在, 代表不是真实元素
       const isRealElement = isDef(oldVnode.nodeType)
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
         // patch existing root node
+        // patch已经存在的根节点
         patchVnode(oldVnode, vnode, insertedVnodeQueue, removeOnly)
       } else {
         if (isRealElement) {
           // mounting to a real element
           // check if this is server-rendered content and if we can perform
           // a successful hydration.
+          // 挂载到真实元素上.
+          // 检查是否是服务器端渲染的内容,
+          // 并且是否我们可以实施一个成功的`注水`(hydration)
           if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
             oldVnode.removeAttribute(SSR_ATTR)
             hydrating = true
@@ -896,14 +907,18 @@ export function createPatchFunction (backend) {
           }
           // either not server-rendered, or hydration failed.
           // create an empty node and replace it
+          // 没有服务器渲染，或`注水`失败。
+          // 创建一个空的节点并替换其
           oldVnode = emptyNodeAt(oldVnode)
         }
 
         // replacing existing element
+        // 替换已经存在的元素
         const oldElm = oldVnode.elm
         const parentElm = nodeOps.parentNode(oldElm)
 
         // create new node
+        // 创建新节点
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -915,6 +930,7 @@ export function createPatchFunction (backend) {
         )
 
         // update parent placeholder node element, recursively
+        // 递归更新父占位符节点元素, 并触发相关生命周期钩子
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent
           const patchable = isPatchable(vnode)
@@ -922,6 +938,7 @@ export function createPatchFunction (backend) {
             for (let i = 0; i < cbs.destroy.length; ++i) {
               cbs.destroy[i](ancestor)
             }
+            // WHY: 所有的祖先元素的elm都设置为vnode.elm么？
             ancestor.elm = vnode.elm
             if (patchable) {
               for (let i = 0; i < cbs.create.length; ++i) {
@@ -930,9 +947,11 @@ export function createPatchFunction (backend) {
               // #6513
               // invoke insert hooks that may have been merged by create hooks.
               // e.g. for directives that uses the "inserted" hook.
+              // 插入钩子可能已经合并进create钩子中, 如指令使用`inserted`钩子
               const insert = ancestor.data.hook.insert
               if (insert.merged) {
                 // start at index 1 to avoid re-invoking component mounted hook
+                // 从1开始调用, 避免二次调用组件mounted钩子
                 for (let i = 1; i < insert.fns.length; i++) {
                   insert.fns[i]()
                 }
@@ -952,7 +971,7 @@ export function createPatchFunction (backend) {
         }
       }
     }
-
+    // 此时统一对insertedVnodeQueue调用插入钩子
     invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
     return vnode.elm
   }
